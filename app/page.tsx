@@ -13,6 +13,14 @@ import { getFixTemplate } from "@/lib/fixer/templates";
 import { DEMO_CONTRACTS } from "./demoContracts";
 
 const ANALYSIS_DEBOUNCE_MS = 300;
+const FINDING_TITLES: Record<string, string> = {
+  P1_GLOBAL_COUNTER: "Shared counter serializes every call",
+  P2_ARRAY_PUSH: "Array push serializes writers",
+  P3_GLOBAL_ACCUMULATOR: "Shared total written by every caller",
+  P8_INHERENT: "Contention by design (expected)",
+  M1_BLOCK_TIME_ASSUMPTION: "Block-time assumption breaks on Monad",
+  C1_REENTRANCY_GUARD: "Reentrancy guard writes storage",
+};
 
 const SEVERITY_COLOR: Record<Finding["severity"], string> = {
   critical: "text-red-400 border-red-500/30",
@@ -37,6 +45,7 @@ export default function Home() {
   const [score, setScore] = useState<number | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [tab, setTab] = useState<"monad" | "security">("monad");
+  const [inspected, setInspected] = useState<string[]>([]);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
@@ -116,6 +125,9 @@ export default function Home() {
     const demo = DEMO_CONTRACTS.find((d) => d.id === id);
     if (!demo) return;
     setSelectedDemo(id);
+    setInspected([]);
+    setFixSelection(null);
+    editorRef.current?.setScrollPosition({ scrollLeft: 0, scrollTop: 0 });
     setSource(demo.source);
     setMeasuredHot(null);
   };
@@ -151,54 +163,34 @@ export default function Home() {
 
   return (
     <div className="flex flex-1 flex-col bg-[#0B0B0E] text-zinc-100">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-purple-500/20 bg-[#13111C]/80 px-6 py-4 backdrop-blur-md">
-        <div>
-          <h1 className="text-lg font-semibold">
-            Monad<span className="text-[#836EF9]">Lens</span>
-          </h1>
-          <p className="text-sm text-zinc-400">
-            Static parallel-execution and Monad-migration inspector for Solidity contracts.{" "}
-            <Link href="/findings" className="text-[#836EF9] hover:underline">
-              Findings on real contracts
-            </Link>
-          </p>
+      <header className="product-header">
+        <div className="brand"><h1>Monad<span>Lens</span></h1><p>Find contention. Unlock parallelism.</p></div>
+        <div role="group" aria-label="Demo contract" className="demo-chips">
+          {DEMO_CONTRACTS.map((demo) => <button key={demo.id} type="button" aria-pressed={selectedDemo === demo.id} onClick={() => handleDemoChange(demo.id)}>{demo.id}</button>)}
         </div>
-
-        <label className="flex items-center gap-2 text-sm text-zinc-400">
-          Demo contract
-          <select
-            value={selectedDemo}
-            onChange={(e) => handleDemoChange(e.target.value)}
-            className="rounded border border-purple-500/20 bg-[#0B0B0E] px-2 py-1 text-zinc-100"
-          >
-            {DEMO_CONTRACTS.map((demo) => (
-              <option key={demo.id} value={demo.id}>
-                {demo.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Link href="/findings" className="findings-link">Real-contract findings ↗</Link>
       </header>
 
-      <main className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-lg border border-purple-500/20 bg-[#13111C]/80 backdrop-blur-md">
+      <main className="workspace">
+        <div className="editor-panel">
+          <div className="editor-heading"><span>CONTRACT</span><span>{selectedDemo}.sol</span></div>
           <Editor
-            height="70vh"
+            height="100%"
             defaultLanguage="sol"
             theme="vs-dark"
             value={source}
             onChange={(value) => setSource(value ?? "")}
             onMount={handleMount}
-            options={{ minimap: { enabled: false }, fontSize: 13 }}
+            options={{ minimap: { enabled: false }, fontSize: 13, automaticLayout: true, scrollBeyondLastLine: false, padding: { top: 20 }, wordWrap: "on" }}
           />
         </div>
 
-        <div className="flex flex-col gap-4 overflow-y-auto rounded-lg border border-purple-500/20 bg-[#13111C]/80 p-4 backdrop-blur-md">
+        <div className="results-panel">
           <div role="tablist" className="flex gap-1 border-b border-purple-500/20">
             {(
               [
-                ["monad", "Monad Compatibility & Parallelism"],
-                ["security", "General Security (Slither)"],
+                ["monad", "Monad"],
+                ["security", "Slither"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -224,14 +216,9 @@ export default function Home() {
           </div>
 
           <div role="tabpanel" hidden={tab !== "monad"} className={tab === "monad" ? "flex flex-col gap-4" : "hidden"}>
-          <div>
-            <span className="text-xs uppercase tracking-wide text-zinc-500">
-              Heuristic Parallel Score
-            </span>
-            <div className="text-3xl font-semibold text-[#836EF9]">
-              {parseError ? "—" : score}
-              {!parseError && <span className="text-base text-zinc-500"> / 100</span>}
-            </div>
+          <div className="score-card">
+            <div><div className="score-number">{parseError || score === null ? "—" : score}<span>/100</span></div><p>Heuristic Parallel Score</p></div>
+            <div className="score-summary">{parseError ? "Check contract syntax" : score === null ? "Analyzing…" : findings.length === 0 ? "No issues detected" : (["critical", "high", "medium", "info", "safe"] as const).flatMap(level => { const count = findings.filter(f => f.severity === level).length; return count ? [`${count} ${level}${level === "critical" ? (count === 1 ? " issue" : " issues") : ""}`] : []; }).join(" · ")}</div>
           </div>
 
           {parseError && (
@@ -257,43 +244,24 @@ export default function Home() {
             {findings.map((finding, i) => (
               <div
                 key={`${finding.ruleId}-${finding.line}-${i}`}
-                className={`rounded border p-3 text-sm ${SEVERITY_COLOR[finding.severity]}`}
+                className="finding-card"
               >
-                <div className="flex items-center justify-between gap-2 font-mono text-xs">
-                  <span className="flex flex-wrap items-center gap-2">
-                    {finding.ruleId} · {finding.severity} · line {finding.line}
-                    {finding.variable && measuredVariables.includes(finding.variable) && (
-                      <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-sans text-[11px] font-medium text-emerald-300">
-                        Predicted &amp; measured
-                      </span>
-                    )}
-                  </span>
-                  {finding.fixTemplateId && getFixTemplate(finding.fixTemplateId) ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFixSelection({ templateId: finding.fixTemplateId!, finding })
-                      }
-                      className="rounded border border-[#836EF9]/60 bg-[#836EF9]/15 px-2 py-0.5 font-sans text-xs text-zinc-100 transition-shadow hover:shadow-[0_0_12px_#836EF9]"
-                    >
-                      Fix
-                    </button>
-                  ) : (
-                    finding.ruleId === "P8_INHERENT" && <span className="font-sans text-zinc-500">No fix: expected</span>
-                  )}
+                <div className="finding-heading">
+                  <h3>{FINDING_TITLES[finding.ruleId] ?? finding.ruleId}</h3>
+                  <div className="finding-meta"><span className={`severity-badge ${SEVERITY_COLOR[finding.severity]}`}>{finding.severity}</span><button type="button" onClick={() => revealLine(finding.line)} className="line-link">line {finding.line}</button></div>
                 </div>
-                <p className="mt-1 text-zinc-200">{finding.message}</p>
-                <p className="mt-1 text-xs text-zinc-400">{finding.conflictNote}</p>
-                <FindingExplanation
-                  finding={finding}
-                  source={source}
-                  aiEnabled={aiEnabled}
-                  measured={
-                    finding.variable && measuredVariables.includes(finding.variable)
-                      ? `"${finding.variable}" was a hot slot in the block MonadLens measured for this code.`
-                      : undefined
-                  }
-                />
+                <div className="finding-actions">
+                  {finding.fixTemplateId && getFixTemplate(finding.fixTemplateId) ? <button type="button" className="primary-action" onClick={() => setFixSelection({ templateId: finding.fixTemplateId!, finding })}>Fix</button> : finding.ruleId === "P8_INHERENT" ? <span className="text-xs text-zinc-400">Expected, no fix</span> : null}
+                  <button type="button" className="secondary-action" aria-expanded={inspected.includes(`${finding.ruleId}-${i}`)} onClick={() => setInspected(prev => prev.includes(`${finding.ruleId}-${i}`) ? prev.filter(key => key !== `${finding.ruleId}-${i}`) : [...prev, `${finding.ruleId}-${i}`])}>Inspect</button>
+                </div>
+                {inspected.includes(`${finding.ruleId}-${i}`) && <div className="finding-inspection">
+                  <p className="font-mono text-xs">{finding.ruleId} · {finding.severity} · line {finding.line}</p>
+                  <p className="text-sm text-zinc-200">{finding.message}</p>
+                  <p className="text-xs text-zinc-400">{finding.conflictNote}</p>
+                  {finding.variable && measuredVariables.includes(finding.variable) && <span className="text-xs text-emerald-300">Predicted &amp; measured</span>}
+                  <FindingExplanation finding={finding} source={source} aiEnabled={aiEnabled} measured={finding.variable && measuredVariables.includes(finding.variable) ? `"${finding.variable}" was a hot slot in the block MonadLens measured for this code.` : undefined} />
+                  {finding.tradeoffs?.length ? <ul className="list-disc pl-4 text-xs text-zinc-400">{finding.tradeoffs.map(item => <li key={item}>{item}</li>)}</ul> : null}
+                </div>}
                 {fixFailedFor === finding && (
                   <div
                     role="alert"
@@ -328,14 +296,12 @@ export default function Home() {
           <div
             role="dialog"
             aria-modal="true"
-            className="flex max-h-full w-full max-w-6xl flex-col gap-3 overflow-y-auto"
+            aria-labelledby="diff-view-title" className="flex max-h-full min-w-0 w-full max-w-6xl flex-col gap-3 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <DiffView original={source} modified={fixPreview.modified} tradeoffs={fixPreview.template.tradeoffs} title={fixPreview.template.title} height="55vh" />
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-purple-500/20 bg-[#13111C] px-4 py-3">
-              <p className="text-xs text-zinc-400">
-                This template patches the relevant declarations and calculations in place.
-              </p>
+            <div className="sticky bottom-0 flex shrink-0 flex-wrap items-center justify-end gap-3 rounded-lg border border-purple-500/20 bg-[#13111C] px-4 py-3">
+
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -347,7 +313,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={applyFix}
-                  className="rounded border border-[#836EF9]/60 bg-[#836EF9]/25 px-4 py-2 text-sm font-medium text-zinc-100 transition-shadow hover:shadow-[0_0_14px_#836EF9]"
+                  className="primary-action"
                 >
                   Apply &amp; re-measure
                 </button>

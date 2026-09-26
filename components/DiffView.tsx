@@ -1,6 +1,7 @@
 "use client";
 
-import { DiffEditor } from "@monaco-editor/react";
+import { useEffect, useRef } from "react";
+import { DiffEditor, type DiffOnMount } from "@monaco-editor/react";
 
 export interface DiffViewProps {
   original: string;
@@ -17,13 +18,22 @@ export function DiffView({
   title = "Suggested fix",
   height = "60vh",
 }: DiffViewProps) {
+  const models = useRef<ReturnType<Parameters<DiffOnMount>[0]["getModel"]>>(null);
+  useEffect(() => () => {
+    const owned = models.current;
+    // Let the editor detach first; disposing attached models crashes Monaco.
+    setTimeout(() => {
+      if (owned && !owned.original.isDisposed()) owned.original.dispose();
+      if (owned && !owned.modified.isDisposed()) owned.modified.dispose();
+    }, 0);
+  }, []);
   return (
     <section
-      className="overflow-hidden rounded-lg border border-purple-500/20 bg-[#13111C]/80 backdrop-blur-md"
+      className="shrink-0 overflow-hidden rounded-lg border border-purple-500/20 bg-[#13111C]/80 backdrop-blur-md"
       aria-labelledby="diff-view-title"
     >
       <div className="border-b border-purple-500/20 px-4 py-3">
-        <h2 id="diff-view-title" className="font-semibold text-zinc-100">
+        <h2 id="diff-view-title" className="text-2xl font-semibold text-zinc-100">
           {title}
         </h2>
         <div className="mt-1 grid grid-cols-2 gap-4 font-mono text-xs uppercase tracking-wide text-zinc-500">
@@ -33,6 +43,9 @@ export function DiffView({
       </div>
 
       <DiffEditor
+        keepCurrentOriginalModel
+        keepCurrentModifiedModel
+        onMount={(editor) => { models.current = editor.getModel(); }}
         height={height}
         original={original}
         modified={modified}
@@ -42,10 +55,12 @@ export function DiffView({
         options={{
           automaticLayout: true,
           fontSize: 13,
+          wordWrap: "on",
           minimap: { enabled: false },
           originalEditable: false,
           readOnly: true,
           renderSideBySide: true,
+          useInlineViewWhenSpaceIsLimited: true,
           scrollBeyondLastLine: false,
         }}
       />

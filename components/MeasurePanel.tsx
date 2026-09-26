@@ -106,8 +106,8 @@ function ShardGroupRow({
 function Metric({ label, value, hint, testId }: { label: string; value: string; hint?: string; testId?: string }) {
   return (
     <div className="rounded border border-purple-500/20 bg-[#0B0B0E]/60 p-3">
-      <div className="text-xs uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="mt-1 font-mono text-xl text-zinc-100" data-testid={testId}>
+      <div className="text-[10px] sm:text-xs uppercase tracking-wide text-zinc-400 break-words">{label}</div>
+      <div className="mt-2 font-mono text-3xl font-semibold text-zinc-100" data-testid={testId}>
         {value}
       </div>
       {hint && <div className="mt-0.5 text-xs text-zinc-500">{hint}</div>}
@@ -127,6 +127,7 @@ function BeforeAfter({ before, after }: { before: SimulationResultMeasured; afte
       <div className="mb-2 text-xs uppercase tracking-wide text-zinc-400">
         Before fix → after fix ({after.txCount} txs each)
       </div>
+      <div className="mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">Critical path <span className="text-zinc-400">{before.criticalPathLength}</span> <span className="text-[#a996ff]">→ {after.criticalPathLength}</span></div>
       <table className="w-full font-mono text-sm">
         <tbody>
           {rows.map(([label, b, a]) => (
@@ -251,23 +252,8 @@ export default function MeasurePanel({
 
   return (
     <section className="flex flex-col gap-3 border-t border-purple-500/20 pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Measured contention</span>
-          <p className="text-xs text-zinc-500">
-            Deploys to a local anvil and mines {TX_COUNT} calls from {TX_COUNT} distinct senders into one block.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => measure()}
-          disabled={loading}
-          className="shrink-0 rounded border border-[#836EF9]/60 bg-[#836EF9]/15 px-4 py-2 text-sm font-medium text-zinc-100 transition-shadow hover:shadow-[0_0_14px_#836EF9] disabled:cursor-wait disabled:opacity-60"
-        >
-          {loading ? "Measuring…" : "Measure"}
-        </button>
-      </div>
-
+      <button type="button" onClick={() => measure()} disabled={loading} className="primary-action measure-action">{loading ? "Measuring…" : "Measure parallelism"}</button>
+      <details className="disclosure"><summary>Advanced</summary><div className="disclosure-content">
       <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
         Function
         <select
@@ -296,6 +282,8 @@ export default function MeasurePanel({
         </p>
       )}
 
+      </div></details>
+
       {requestError && (
         <div className="rounded border border-red-500/30 p-3 text-sm text-red-400">{requestError}</div>
       )}
@@ -303,7 +291,7 @@ export default function MeasurePanel({
       {state && !state.measured && (
         <div className="rounded border border-zinc-600/40 p-3 text-sm">
           <div className="font-medium text-zinc-300">Not measured</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-zinc-400">{state.reason}</pre>
+          <p className="mt-1 text-sm text-zinc-400">Measurement runs locally or via Docker (<a href="https://github.com/Nghtphl/MonadLens#docker-ile-çalıştırma" className="underline">see README</a>).</p><details className="disclosure mt-2"><summary>Details</summary><pre className="whitespace-pre-wrap break-words text-xs text-zinc-400">{state.reason}</pre></details>
         </div>
       )}
 
@@ -326,26 +314,13 @@ export default function MeasurePanel({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <Metric
-              label="Transactions"
-              value={String(state.txCount)}
-              hint={`${state.revertedTxCount} reverted`}
-            />
-            <Metric label="Re-executions" value={String(state.reExecutionCount)} hint="txs with ≥1 read-write conflict" />
-            <Metric
-              label="Critical path"
-              value={String(state.criticalPathLength)}
-              testId="critical-path"
-              hint={`longest dependency chain, of ${state.txCount} txs`}
-            />
-            <Metric
-              label="Ideal parallelism"
-              value={`${state.idealParallelism.toFixed(1)}×`}
-              hint="txs ÷ critical path (upper bound)"
-            />
+          <div className="grid grid-cols-3 gap-2">
+            <Metric label="Critical path" value={String(state.criticalPathLength)} testId="critical-path" />
+            <Metric label="Re-executions" value={String(state.reExecutionCount)} />
+            <Metric label="Parallelism" value={`${state.idealParallelism.toFixed(1)}×`} />
           </div>
-
+          <p className="text-xs text-emerald-300">Measured · {state.txCount} txs <span className="text-zinc-400">· Parallelism is an upper bound</span></p>
+          <details className="disclosure"><summary>Details</summary><div className="disclosure-content">
           <div className="text-xs text-zinc-500">
             Avg gas used {state.avgGasUsed.toLocaleString()} · recommended gas limit{" "}
             {state.recommendedGasLimit.toLocaleString()} (Monad bills the limit)
@@ -411,6 +386,7 @@ export default function MeasurePanel({
               }
             />
           )}
+          </div></details>
         </div>
       )}
     </section>

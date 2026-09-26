@@ -63,10 +63,10 @@ function Measurement({ m, note }: { m?: ReportMeasurement; note?: string }) {
 
 function ContractCard({ c }: { c: ReportContract }) {
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-purple-500/20 bg-[#13111C]/80 p-4">
+    <section className="flex min-w-0 flex-col gap-4 rounded-2xl border border-purple-500/20 bg-[#13111C]/80 p-5 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h3 className="font-mono text-sm font-semibold text-zinc-100">{c.file}</h3>
+          <h3 className="text-xl font-semibold text-zinc-100">{c.file}</h3>
           <p className="text-xs text-zinc-500">
             {GROUP_LABEL[c.group]}
             {c.sourceUrl && (
@@ -82,10 +82,12 @@ function ContractCard({ c }: { c: ReportContract }) {
         </div>
         <div className="text-right">
           <div className="text-xs uppercase tracking-wide text-zinc-500">Heuristic score</div>
-          <div className="text-xl font-semibold text-[#836EF9]">{c.score ?? "—"}</div>
+          <div className="text-4xl font-semibold text-[#a996ff]">{c.score ?? "—"}</div>
         </div>
       </div>
 
+      <p className="text-sm text-zinc-300">{c.findings.length} static findings · {c.measurement?.measured ? "Measured" : "Not measured"}</p>
+      <details className="disclosure"><summary>Inspect</summary><div className="disclosure-content">
       {(c.crashed || c.parseError) && (
         <p className="text-sm text-red-400">{c.crashed ? "Analyzer crashed." : `Parse error: ${c.parseError}`}</p>
       )}
@@ -107,6 +109,7 @@ function ContractCard({ c }: { c: ReportContract }) {
       )}
 
       <Measurement m={c.measurement} note={c.measurementNote} />
+      </div></details>
     </section>
   );
 }
@@ -125,18 +128,16 @@ export default function FindingsPage() {
         <Link href="/" className="text-sm text-zinc-400 hover:text-zinc-200">
           ← Monad<span className="text-[#836EF9]">Lens</span>
         </Link>
-        <h1 className="mt-1 text-lg font-semibold">Findings on real contracts</h1>
-        <p className="text-sm text-zinc-400">
-          {validation.length} contracts, {crashes} crashes, {parseErrors} parse errors · run {report.generatedAt}. Scores
-          are heuristic; measured numbers come from 100 transactions from distinct senders mined into one block on a local
-          anvil. Contracts that need an older compiler are not measured.
-        </p>
+        <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">Findings on real contracts</h1>
+        <p className="mt-4 text-sm text-zinc-400">{validation.length} contracts · {crashes} crashes · {parseErrors} parse errors</p>
+        <details className="disclosure mt-3"><summary>About this run</summary><p className="max-w-2xl py-3">Run {report.generatedAt}. Scores are heuristic. Measured numbers come from 100 transactions in one local Anvil block. Contracts requiring an older compiler are not measured.</p></details>
       </header>
 
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
         {missed.length > 0 && (
           <section className="flex flex-col gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
             <h2 className="text-sm font-semibold text-amber-200">Static rules missed it, measurement caught it</h2>
+            <details className="disclosure"><summary>Inspect</summary>
             {missed.map(({ c, h }) => (
               <p key={`${c.file}-${h.label}`} className="text-sm text-zinc-300">
                 <span className="font-mono">{c.file}</span>: <span className="font-mono text-zinc-100">{h.label}</span> is hot
@@ -144,6 +145,7 @@ export default function FindingsPage() {
                 {c.measurementNote && <span className="text-zinc-500"> {c.measurementNote}</span>}
               </p>
             ))}
+            </details>
           </section>
         )}
 

@@ -2,6 +2,11 @@
 
 Durum: 2026-09-26 16:05. Branch `cleanup` (HEAD `18a559f` + bu HANDOFF commit'i), çalışma ağacı temiz (`.agents/` hariç). Canlı bu sürümde (deploy `monadlens-7f6a7t7mo`). `main` hâlâ `3796e77` (before-cleanup); `cleanup` main'e merge edilmedi. Git remote yok, hiçbir şey push edilmedi.
 
+## Teslim reposu
+
+- https://github.com/Nghtphl/MonadLens
+- **Uyarı:** Asıl repo geçmişinde GPL dosyaları var; asıl repo asla doğrudan push edilmemeli, teslim reposu `git archive` ile üretilir.
+
 ## Canlı
 
 - https://monadlens-rust.vercel.app (Vercel hesabı `nghtphl`, proje `monadlens`). Sadece bu adresi paylaşın; deploy'a özel `monadlens-xxxx-….vercel.app` adresleri Vercel girişi ister.

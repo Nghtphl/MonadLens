@@ -28,3 +28,46 @@ body {
 .monadlens-line-highlight {
   background: rgba(131, 110, 249, 0.28);
 }
+
+/* Product workspace */
+body { background: #0B0B0E; color: #f4f4f5; font-family: var(--font-geist-sans), Arial, sans-serif; }
+button, summary { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .55; }
+button, a, summary { outline-offset: 4px; }
+.product-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 32px; border-bottom: 1px solid #ffffff12; }
+.brand h1 { font-size: 26px; font-weight: 750; letter-spacing: -1px; }
+.brand h1 span { color: #a996ff; }
+.brand p { color: #a1a1aa; font-size: 12px; margin-top: 4px; }
+.demo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.demo-chips button { border: 1px solid #ffffff15; border-radius: 10px; padding: 12px 14px; font-size: 13px; font-weight: 600; background: #13111C; transition: .15s; }
+.demo-chips button[aria-pressed=true] { background: #836EF9; border-color: #a996ff; color: white; box-shadow: 0 4px 24px #836ef930; }
+.demo-chips button:hover { border-color: #a996ff; }
+.findings-link { font-size: 12px; color: #b9b2cf; }
+.workspace { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 24px; padding: 28px 32px; align-items: start; }
+.editor-panel { position: sticky; top: 24px; height: calc(100vh - 170px); min-height: 440px; min-width: 0; overflow: hidden; border: 1px solid #ffffff16; border-radius: 16px; background: #13111C; padding-bottom: 48px; }
+.editor-heading { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #aaa6b7; font-size: 11px; letter-spacing: .06em; }
+.results-panel { min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.score-card { display: flex; align-items: center; gap: 28px; padding: 24px; border-radius: 16px; background: linear-gradient(120deg,#201934,#13111C); border: 1px solid #836ef930; }
+.score-number { font-size: 72px; line-height: 1; letter-spacing: -4px; font-weight: 650; color: #b7a9ff; }
+.score-number span { font-size: 19px; letter-spacing: 0; color: #a1a1aa; margin-left: 6px; }
+.score-card p { font-size: 11px; color: #b5afc5; margin-top: 12px; }
+.score-summary { font-size: 15px; color: #ded9eb; }
+.finding-card { padding: 22px; border: 1px solid #ffffff16; border-radius: 14px; background: #13111C; }
+.finding-heading h3 { font-size: 21px; font-weight: 600; line-height: 1.3; letter-spacing: -.4px; color: #f4f4f5; }
+.finding-meta { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.severity-badge { font-size: 11px; border-width: 1px; border-radius: 6px; padding: 3px 8px; background: #ffffff04; }
+.line-link { font-size: 12px; color: #a1a1aa; text-decoration: underline; text-underline-offset: 3px; }
+.finding-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
+.primary-action { background: #836EF9; color: #fff; border: 1px solid #a18ffb; border-radius: 10px; padding: 12px 28px; font-size: 14px; font-weight: 650; transition: .15s; }
+.primary-action:hover { background: #927efb; box-shadow: 0 0 22px #836ef930; }
+.secondary-action { border: 1px solid #ffffff30; border-radius: 10px; padding: 12px 20px; font-size: 13px; color: #d4d4d8; }
+.finding-inspection { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 18px; border-top: 1px solid #ffffff15; overflow-wrap: anywhere; }
+.measure-action { width: 100%; padding: 16px; font-size: 16px; }
+.disclosure { min-width: 0; color: #b7b1c6; font-size: 12px; }
+.disclosure summary { padding: 8px 0; }
+.disclosure-content { display: flex; flex-direction: column; gap: 14px; padding: 12px 0; overflow-wrap: anywhere; }
+@media(max-width: 1100px) { .product-header { flex-wrap: wrap; } .demo-chips { order: 3; width: 100%; } }
+@media(max-width: 767px) { .workspace { grid-template-columns: minmax(0,1fr); padding: 16px; gap: 24px; } .product-header { padding: 20px 16px; gap: 16px; } .editor-panel { position: relative; top: 0; height: 400px; min-height: 0; } .demo-chips button { padding: 10px 12px; } .score-card { padding: 20px; gap: 16px; } .score-number { font-size: 64px; } .finding-card { padding: 18px; } .findings-link { max-width: 112px; text-align: right; } }
+
+.disclosure summary:hover, .line-link:hover { color: #e4ddff; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; } }

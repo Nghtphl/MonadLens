@@ -58,9 +58,7 @@ export default function SecurityPanel({ source, monadFindings }: SecurityPanelPr
           <span className="text-xs uppercase tracking-wide text-zinc-500">
             General Security (Slither)
           </span>
-          <p className="text-xs text-zinc-500">
-            Runs Slither server-side and keeps MonadLens findings when both tools flag one line.
-          </p>
+
         </div>
         <button
           type="button"
@@ -101,8 +99,7 @@ export default function SecurityPanel({ source, monadFindings }: SecurityPanelPr
                   <div className="font-mono text-xs">
                     {finding.ruleId} · {finding.severity} · line {finding.line}
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-zinc-200">{finding.message}</p>
-                  <p className="mt-1 text-xs text-zinc-400">{finding.conflictNote}</p>
+                  <details className="disclosure mt-2"><summary>Inspect</summary><p className="mt-2 whitespace-pre-wrap break-words text-zinc-200">{finding.message}</p><p className="mt-2 text-xs text-zinc-400">{finding.conflictNote}</p></details>
                 </div>
               ))}
             </div>

@@ -36,7 +36,7 @@ async function waitForMeasurement(page: Page): Promise<string | undefined> {
   const notMeasured = page.getByText("Not measured", { exact: true });
   await expect(measured.or(notMeasured)).toBeVisible({ timeout: 120_000 });
   if (await notMeasured.isVisible()) {
-    return (await notMeasured.locator("xpath=following-sibling::pre").textContent())?.trim() ?? "Not measured";
+    return (await notMeasured.locator("xpath=following-sibling::p").textContent())?.trim() ?? "Not measured";
   }
   return undefined;
 }
@@ -46,12 +46,14 @@ test("BadNFT: findings → Measure → Fix → diff → Apply & re-measure lower
 
   await test.step("open the page and load BadNFT", async () => {
     await page.goto("/");
-    await page.getByLabel("Demo contract").selectOption("BadNFT");
+    await page.getByRole("button", { name: "BadNFT", exact: true }).click();
   });
 
   await test.step("static findings appear", async () => {
-    await expect(page.getByText("P1_GLOBAL_COUNTER · critical · line 11")).toBeVisible();
-    await expect(page.getByText("P1_GLOBAL_COUNTER · critical · line 18")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Shared counter serializes every call" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "line 11", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "line 18", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Inspect", exact: true }).first().click();
   });
 
   await test.step("Explain shows a labeled explanation (AI or static)", async () => {
@@ -72,7 +74,7 @@ test("BadNFT: findings → Measure → Fix → diff → Apply & re-measure lower
   let before: number | undefined;
   if (!skipReason) {
     await test.step("Measure shows a measured result", async () => {
-      await page.getByRole("button", { name: "Measure", exact: true }).click();
+      await page.getByRole("button", { name: "Measure parallelism", exact: true }).click();
       const reason = await waitForMeasurement(page);
       if (reason) {
         skipReason = `the app returned Not measured (${reason})`;
