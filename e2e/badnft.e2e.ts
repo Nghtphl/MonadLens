@@ -44,15 +44,17 @@ async function waitForMeasurement(page: Page): Promise<string | undefined> {
 test("BadNFT: findings → Measure → Fix → diff → Apply & re-measure lowers the critical path", async ({ page }) => {
   let skipReason = measurementSkipReason();
 
-  await test.step("open the page and load BadNFT", async () => {
+  await test.step("open the page, enter the workspace and load BadNFT", async () => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Test your contract" }).first().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Test your contract" })).toBeFocused();
     await page.getByRole("button", { name: "BadNFT", exact: true }).click();
   });
 
   await test.step("static findings appear", async () => {
-    await expect(page.getByRole("heading", { name: "Shared counter serializes every call" })).toHaveCount(2);
-    await expect(page.getByRole("button", { name: "line 11", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "line 18", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Shared counter contention" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: "Line 11: show in editor", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Line 18: show in editor", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Inspect", exact: true }).first().click();
   });
 
@@ -86,10 +88,13 @@ test("BadNFT: findings → Measure → Fix → diff → Apply & re-measure lower
   }
   if (skipReason) skipMeasurement(skipReason);
 
-  await test.step("Fix opens the diff with trade-offs", async () => {
-    await page.getByRole("button", { name: "Fix", exact: true }).first().click();
+  await test.step("Review fixes opens the diff with trade-offs", async () => {
+    // One supported fix (sharded counter) covers both counter findings.
+    await expect(page.getByText("1 supported fix · covers 2 findings")).toBeVisible();
+    await page.getByRole("button", { name: "Review fixes", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
+    await expect(dialog.getByText("Shared counter contention")).toHaveCount(2);
     await expect(dialog.getByText("Trade-offs")).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Apply & re-measure" })).toBeVisible();
   });
