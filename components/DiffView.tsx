@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { DiffEditor, type DiffOnMount } from "@monaco-editor/react";
+import { DiffEditor, type DiffOnMount, type DiffBeforeMount } from "@monaco-editor/react";
+import { defineMonadLensTheme, MONADLENS_THEME } from "./editorTheme";
 
 export interface DiffViewProps {
   original: string;
@@ -27,54 +28,56 @@ export function DiffView({
       if (owned && !owned.modified.isDisposed()) owned.modified.dispose();
     }, 0);
   }, []);
+  const beforeMount: DiffBeforeMount = (monaco) => defineMonadLensTheme(monaco);
+
   return (
-    <section
-      className="shrink-0 overflow-hidden rounded-lg border border-purple-500/20 bg-[#13111C]/80 backdrop-blur-md"
-      aria-labelledby="diff-view-title"
-    >
-      <div className="border-b border-purple-500/20 px-4 py-3">
-        <h2 id="diff-view-title" className="text-2xl font-semibold text-zinc-100">
-          {title}
-        </h2>
-        <div className="mt-1 grid grid-cols-2 gap-4 font-mono text-xs uppercase tracking-wide text-zinc-500">
+    <section className="diff-view" aria-labelledby="diff-view-title">
+      <div className="diff-view-head">
+        <h3 id="diff-view-title">{title}</h3>
+        <div className="diff-view-cols" aria-hidden="true">
           <span>Original</span>
-          <span>Fixed</span>
+          <span>Suggested</span>
         </div>
       </div>
 
-      <DiffEditor
-        keepCurrentOriginalModel
-        keepCurrentModifiedModel
-        onMount={(editor) => { models.current = editor.getModel(); }}
-        height={height}
-        original={original}
-        modified={modified}
-        language="sol"
-        theme="vs-dark"
-        loading={<p className="p-4 text-sm text-zinc-400">Loading diff editor…</p>}
-        options={{
-          automaticLayout: true,
-          fontSize: 13,
-          wordWrap: "on",
-          minimap: { enabled: false },
-          originalEditable: false,
-          readOnly: true,
-          renderSideBySide: true,
-          useInlineViewWhenSpaceIsLimited: true,
-          scrollBeyondLastLine: false,
-        }}
-      />
+      <div className="diff-view-editor">
+        <DiffEditor
+          keepCurrentOriginalModel
+          keepCurrentModifiedModel
+          beforeMount={beforeMount}
+          onMount={(editor) => {
+            models.current = editor.getModel();
+          }}
+          height={height}
+          original={original}
+          modified={modified}
+          language="sol"
+          theme={MONADLENS_THEME}
+          loading={<p className="diff-loading">Loading diff…</p>}
+          options={{
+            automaticLayout: true,
+            fontSize: 13,
+            wordWrap: "off",
+            minimap: { enabled: false },
+            originalEditable: false,
+            readOnly: true,
+            renderSideBySide: true,
+            useInlineViewWhenSpaceIsLimited: true,
+            scrollBeyondLastLine: false,
+          }}
+        />
+      </div>
 
-      <div className="border-t border-purple-500/20 p-4">
-        <h3 className="text-sm font-semibold text-zinc-100">Trade-offs</h3>
+      <div className="diff-view-tradeoffs">
+        <h4>Trade-offs</h4>
         {tradeoffs.length > 0 ? (
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-zinc-300">
+          <ul>
             {tradeoffs.map((tradeoff) => (
               <li key={tradeoff}>{tradeoff}</li>
             ))}
           </ul>
         ) : (
-          <p className="mt-2 text-sm text-zinc-500">No trade-offs supplied.</p>
+          <p className="muted">No trade-offs supplied.</p>
         )}
       </div>
     </section>

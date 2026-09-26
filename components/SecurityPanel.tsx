@@ -4,35 +4,28 @@ import { useMemo, useState } from "react";
 import { removeSlitherDuplicates } from "@/lib/security/dedupe";
 import type { SlitherResult } from "@/lib/security/slither";
 import type { Finding } from "@/lib/types";
-
-const SEVERITY_COLOR: Record<Finding["severity"], string> = {
-  critical: "border-red-500/30 text-red-400",
-  high: "border-orange-500/30 text-orange-400",
-  medium: "border-yellow-500/30 text-yellow-400",
-  info: "border-purple-500/20 text-purple-300",
-  safe: "border-emerald-500/20 text-emerald-400",
-};
+import { LineButton } from "./FindingCard";
+import { findingTitle, SEVERITY_LABEL } from "./findingTitles";
 
 export interface SecurityPanelProps {
   source: string;
   monadFindings: readonly Finding[];
+  onRevealLine?: (line: number) => void;
 }
 
-export default function SecurityPanel({ source, monadFindings }: SecurityPanelProps) {
+export default function SecurityPanel({ source, monadFindings, onRevealLine }: SecurityPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SlitherResult | null>(null);
   const [scannedSource, setScannedSource] = useState<string | null>(null);
 
   const findings = useMemo(
-    () =>
-      result?.available
-        ? removeSlitherDuplicates(monadFindings, result.findings)
-        : [],
+    () => (result?.available ? removeSlitherDuplicates(monadFindings, result.findings) : []),
     [monadFindings, result]
   );
   const stale = scannedSource !== null && scannedSource !== source;
 
   const scan = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const response = await fetch("/api/security", {
@@ -52,55 +45,61 @@ export default function SecurityPanel({ source, monadFindings }: SecurityPanelPr
   };
 
   return (
-    <section className="flex flex-col gap-3 border-t border-purple-500/20 pt-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <span className="text-xs uppercase tracking-wide text-zinc-500">
-            General Security (Slither)
-          </span>
-
-        </div>
-        <button
-          type="button"
-          onClick={scan}
-          disabled={loading}
-          className="shrink-0 rounded border border-[#836EF9]/60 bg-[#836EF9]/15 px-4 py-2 text-sm font-medium text-zinc-100 transition-shadow hover:shadow-[0_0_14px_#836EF9] disabled:cursor-wait disabled:opacity-60"
-        >
-          {loading ? "Scanning…" : "Run Slither"}
-        </button>
+    <section className="block" aria-labelledby="slither-heading" aria-busy={loading}>
+      <div className="block-head">
+        <h2 id="slither-heading" className="block-title">
+          General security (Slither)
+        </h2>
+        <span className="block-hint">Generic detectors; Monad-specific findings stay in the Monad tab</span>
       </div>
+      <button type="button" onClick={scan} disabled={loading} aria-busy={loading} className="btn btn-secondary btn-block">
+        {loading ? (
+          <>
+            <span className="spinner" aria-hidden="true" />
+            Scanning…
+          </>
+        ) : (
+          "Run Slither"
+        )}
+      </button>
 
       {result && !result.available && (
-        <div className="rounded border border-zinc-600/40 p-3 text-sm text-zinc-300">
-          <div className="font-medium">Slither unavailable</div>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-zinc-400">
-            {result.reason}
-          </pre>
+        <div className="notice notice-neutral" role="status">
+          <div className="notice-title">Slither unavailable</div>
+          <pre className="notice-pre">{result.reason}</pre>
         </div>
       )}
 
       {result?.available && (
-        <div className={stale ? "opacity-50" : ""}>
-          <div className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
-            <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-medium text-emerald-400">
-              Scanned
-            </span>
-            {stale && <span className="text-yellow-400">Code changed since this scan</span>}
+        <div className={stale ? "is-stale" : undefined}>
+          <div className="measured-head">
+            <span className="tag tag-measured">Scanned</span>
+            {stale && <span className="warn-text small">Code changed since this scan</span>}
           </div>
           {findings.length === 0 ? (
-            <p className="text-sm text-zinc-500">No additional Slither findings.</p>
+            <p className="muted">No additional Slither findings.</p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="finding-list">
               {findings.map((finding, index) => (
-                <div
-                  key={`${finding.ruleId}-${finding.line}-${index}`}
-                  className={`rounded border p-3 text-sm ${SEVERITY_COLOR[finding.severity]}`}
-                >
-                  <div className="font-mono text-xs">
-                    {finding.ruleId} · {finding.severity} · line {finding.line}
+                <article key={`${finding.ruleId}-${finding.line}-${index}`} className="finding-card" data-severity={finding.severity}>
+                  <div className="finding-top">
+                    <span className={`sev sev-${finding.severity}`}>{SEVERITY_LABEL[finding.severity]}</span>
+                    {onRevealLine ? (
+                      <LineButton line={finding.line} onRevealLine={onRevealLine} />
+                    ) : (
+                      <span className="mono muted small">Line {finding.line}</span>
+                    )}
                   </div>
-                  <details className="disclosure mt-2"><summary>Inspect</summary><p className="mt-2 whitespace-pre-wrap break-words text-zinc-200">{finding.message}</p><p className="mt-2 text-xs text-zinc-400">{finding.conflictNote}</p></details>
-                </div>
+                  <h3 className="finding-title">{findingTitle(finding.ruleId)}</h3>
+                  <details className="disclosure">
+                    <summary>Inspect</summary>
+                    <div className="disclosure-content">
+                      <p className="mono small muted">{finding.ruleId}</p>
+                      <p className="finding-message">{finding.message}</p>
+                      <p className="finding-conflict">{finding.conflictNote}</p>
+                    </div>
+                  </details>
+                </article>
               ))}
             </div>
           )}

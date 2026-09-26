@@ -26,6 +26,7 @@ export default function FindingExplanation({ finding, source, aiEnabled, measure
   const current = result?.forSource === source ? result.response : null;
 
   const run = async () => {
+    if (loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -55,44 +56,30 @@ export default function FindingExplanation({ finding, source, aiEnabled, measure
   };
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={run}
-          disabled={loading}
-          className="rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 font-sans text-xs text-sky-100 transition-shadow hover:shadow-[0_0_12px_#836EF9] disabled:cursor-wait disabled:opacity-60"
-        >
+    <div className="explain">
+      <div className="explain-row">
+        <button type="button" onClick={run} disabled={loading} aria-busy={loading} className="btn btn-secondary btn-sm">
           {loading ? "Explaining…" : "Explain"}
         </button>
         {aiEnabled && (
-          <span className="text-[11px] text-zinc-500">
-            AI explanation sends this finding and ±10 lines of code to Google Gemini.
-          </span>
+          <span className="explain-note">AI explanation sends this finding and ±10 lines of code to Google Gemini.</span>
         )}
       </div>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" className="explain-error">
+          {error}
+        </p>
+      )}
 
       {current && (
-        <div
-          data-testid="finding-explanation"
-          className={`rounded border-l-2 p-2 text-xs ${
-            current.kind === "ai" ? "border-sky-400/70 bg-sky-500/5" : "border-zinc-500/60 bg-zinc-500/5"
-          }`}
-        >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span
-              className={`rounded px-1.5 py-0.5 font-medium ${
-                current.kind === "ai" ? "bg-sky-500/15 text-sky-200" : "bg-zinc-500/20 text-zinc-300"
-              }`}
-            >
-              {current.kind === "ai" ? "AI explanation" : "Static explanation"}
-            </span>
-            {current.cached && <span className="text-zinc-500">cached</span>}
+        <div data-testid="finding-explanation" className={`explain-box ${current.kind === "ai" ? "is-ai" : "is-static"}`}>
+          <div className="explain-head">
+            <span className="explain-kind">{current.kind === "ai" ? "AI explanation" : "Static explanation"}</span>
+            {current.cached && <span className="explain-meta">cached</span>}
           </div>
-          <p className="whitespace-pre-wrap text-zinc-300">{current.text}</p>
-          <p className="mt-1 text-zinc-500">
+          <p className="explain-text">{current.text}</p>
+          <p className="explain-meta">
             {current.section === "none" ? "No docs section." : `Source: ${current.section}`}
             {current.kind === "static" && current.reason && ` · ${current.reason}`}
           </p>

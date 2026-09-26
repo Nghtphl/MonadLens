@@ -83,14 +83,14 @@ export default function BlockReplay({ lanes }: { lanes: ReplayLane[] }) {
   };
 
   return (
-    <section className="flex flex-col gap-3 rounded border border-purple-500/20 bg-[#0B0B0E]/60 p-3">
+    <section className="replay">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs uppercase tracking-wide text-zinc-500">Block replay</span>
         <div className="flex items-center gap-2 text-xs">
           <button
             type="button"
             onClick={togglePlay}
-            className="rounded border border-[#836EF9]/60 bg-[#836EF9]/15 px-3 py-1 text-zinc-100 transition-shadow hover:shadow-[0_0_12px_#836EF9]"
+            className="btn btn-secondary btn-sm"
           >
             {playing ? "Pause" : round >= maxRound ? "Replay" : "Play"}
           </button>
@@ -100,7 +100,7 @@ export default function BlockReplay({ lanes }: { lanes: ReplayLane[] }) {
               setPlaying(false);
               setRound(0);
             }}
-            className="rounded border border-zinc-600 px-3 py-1 text-zinc-300 hover:bg-zinc-800"
+            className="btn btn-ghost btn-sm"
           >
             Reset
           </button>
@@ -109,7 +109,7 @@ export default function BlockReplay({ lanes }: { lanes: ReplayLane[] }) {
             <select
               value={speed}
               onChange={(e) => setSpeed(Number(e.target.value) as (typeof SPEEDS)[number])}
-              className="rounded border border-purple-500/20 bg-[#0B0B0E] px-1 py-0.5 text-zinc-100"
+              className="select select-sm"
             >
               {SPEEDS.map((s) => (
                 <option key={s} value={s}>
@@ -125,7 +125,7 @@ export default function BlockReplay({ lanes }: { lanes: ReplayLane[] }) {
         Dependency round {round} / {maxRound}
       </div>
 
-      <div className={`grid gap-4 ${lanes.length > 1 ? "grid-cols-2" : "max-w-xs grid-cols-1"}`}>
+      <div className={`grid gap-4 ${lanes.length > 1 ? "grid-cols-1 sm:grid-cols-2" : "max-w-xs grid-cols-1"}`}>
         {lanes.map((lane) => (
           <Lane key={lane.title} lane={lane} round={round} />
         ))}

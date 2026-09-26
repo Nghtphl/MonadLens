@@ -1,6 +1,6 @@
 "use client";
 
-import { useImperativeHandle, useMemo, useState, type Ref } from "react";
+import { useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import type { MeasureResponse } from "@/lib/simulator/trace";
 import type { SimulationResultMeasured } from "@/lib/types";
 import BlockReplay from "./BlockReplay";
@@ -105,12 +105,12 @@ function ShardGroupRow({
 
 function Metric({ label, value, hint, testId }: { label: string; value: string; hint?: string; testId?: string }) {
   return (
-    <div className="rounded border border-purple-500/20 bg-[#0B0B0E]/60 p-3">
-      <div className="text-[10px] sm:text-xs uppercase tracking-wide text-zinc-400 break-words">{label}</div>
-      <div className="mt-2 font-mono text-3xl font-semibold text-zinc-100" data-testid={testId}>
+    <div className="kpi">
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value" data-testid={testId}>
         {value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-zinc-500">{hint}</div>}
+      {hint && <div className="kpi-hint">{hint}</div>}
     </div>
   );
 }
@@ -120,30 +120,39 @@ function BeforeAfter({ before, after }: { before: SimulationResultMeasured; afte
     ["Critical path", String(before.criticalPathLength), String(after.criticalPathLength)],
     ["Re-executions", String(before.reExecutionCount), String(after.reExecutionCount)],
     ["Ideal parallelism", `${before.idealParallelism.toFixed(1)}×`, `${after.idealParallelism.toFixed(1)}×`],
-    ["Avg gas used", before.avgGasUsed.toLocaleString(), after.avgGasUsed.toLocaleString()],
+    ["Avg gas used", before.avgGasUsed.toLocaleString("en-US"), after.avgGasUsed.toLocaleString("en-US")],
   ];
+  const improved = after.criticalPathLength < before.criticalPathLength;
   return (
-    <div className="rounded border border-[#836EF9]/40 bg-[#836EF9]/5 p-3">
-      <div className="mb-2 text-xs uppercase tracking-wide text-zinc-400">
-        Before fix → after fix ({after.txCount} txs each)
+    <div className="compare">
+      <div className="compare-label">
+        Before fix → after fix · {after.txCount} transactions each
       </div>
-      <div className="mb-4 text-3xl font-semibold tracking-tight sm:text-4xl">Critical path <span className="text-zinc-400">{before.criticalPathLength}</span> <span className="text-[#a996ff]">→ {after.criticalPathLength}</span></div>
-      <table className="w-full font-mono text-sm">
+      <div className="compare-hero">
+        <span className="compare-metric">Critical path</span>
+        <span className="compare-values">
+          <span className="compare-before">{before.criticalPathLength}</span>
+          <span className="compare-arrow" aria-hidden="true">→</span>
+          <span className={improved ? "compare-after is-better" : "compare-after"}>{after.criticalPathLength}</span>
+        </span>
+      </div>
+      <table className="compare-table">
+        <caption className="sr-only">Measured values before and after the fix</caption>
         <tbody>
           {rows.map(([label, b, a]) => (
             <tr key={label} data-testid={`before-after-${label.toLowerCase().replace(/ /g, "-")}`}>
-              <td className="py-0.5 font-sans text-xs text-zinc-500">{label}</td>
-              <td className="py-0.5 text-right text-zinc-400" data-testid="before">
-                {b}
-              </td>
-              <td className="px-2 py-0.5 text-center text-zinc-600">→</td>
-              <td className="py-0.5 text-right text-zinc-100" data-testid="after">
-                {a}
-              </td>
+              <th scope="row">{label}</th>
+              <td data-testid="before">{b}</td>
+              <td aria-hidden="true" className="compare-table-arrow">→</td>
+              <td data-testid="after">{a}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="compare-note">
+        Critical path is the longest chain of dependent transactions in the measured block (OCC model). It is not a
+        network speed measurement.
+      </p>
     </div>
   );
 }
@@ -151,6 +160,8 @@ function BeforeAfter({ before, after }: { before: SimulationResultMeasured; afte
 export interface MeasurePanelHandle {
   /** Keeps the current result as "before" and measures `newSource` (e.g. after applying a fix). */
   remeasureWithBaseline(newSource: string): void;
+  /** Scrolls the panel into view and moves focus to its heading. */
+  reveal(): void;
 }
 
 export default function MeasurePanel({
@@ -159,6 +170,7 @@ export default function MeasurePanel({
   staticVariables = [],
   onRevealLine,
   onMeasured,
+  onBusyChange,
 }: {
   source: string;
   ref?: Ref<MeasurePanelHandle>;
@@ -166,6 +178,8 @@ export default function MeasurePanel({
   staticVariables?: string[];
   onRevealLine?: (line: number) => void;
   onMeasured?: (hot: MeasuredHotVariables | null) => void;
+  /** Called when a measurement starts or ends. */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MeasureResponse | null>(null);
@@ -173,6 +187,9 @@ export default function MeasurePanel({
   const [measuredKey, setMeasuredKey] = useState<string | null>(null);
   const [chosenSig, setChosenSig] = useState<string | null>(null);
   const [baseline, setBaseline] = useState<MeasureResponse | null>(null);
+  const inFlight = useRef(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const fns = useMemo(() => listCallableFunctions(source), [source]);
   const selectFor = (fnList: CallableFn[]) =>
@@ -183,8 +200,12 @@ export default function MeasurePanel({
   const requestKey = keyOf(selected, source);
 
   const measure = async (src: string = source) => {
+    // One measurement at a time.
+    if (inFlight.current) return;
+    inFlight.current = true;
     const fn = src === source ? selected : selectFor(listCallableFunctions(src));
     setLoading(true);
+    onBusyChange?.(true);
     setRequestError(null);
     try {
       const res = await fetch("/api/simulate", {
@@ -213,14 +234,21 @@ export default function MeasurePanel({
       setRequestError("Measurement service is unreachable.");
       setResult(null);
     } finally {
+      inFlight.current = false;
       setLoading(false);
+      onBusyChange?.(false);
     }
   };
 
   useImperativeHandle(ref, () => ({
     remeasureWithBaseline(newSource: string) {
+      if (inFlight.current) return;
       setBaseline(result?.state.measured ? result : null);
       void measure(newSource);
+    },
+    reveal() {
+      sectionRef.current?.scrollIntoView({ block: "start" });
+      headingRef.current?.focus({ preventScroll: true });
     },
   }));
 
@@ -251,142 +279,194 @@ export default function MeasurePanel({
   }, [state, stale, result, source]);
 
   return (
-    <section className="flex flex-col gap-3 border-t border-purple-500/20 pt-4">
-      <button type="button" onClick={() => measure()} disabled={loading} className="primary-action measure-action">{loading ? "Measuring…" : "Measure parallelism"}</button>
-      <details className="disclosure"><summary>Advanced</summary><div className="disclosure-content">
-      <label className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
-        Function
-        <select
-          value={selected ? signatureOf(selected) : ""}
-          onChange={(e) => setChosenSig(e.target.value)}
-          disabled={fns.length === 0}
-          className="min-w-0 flex-1 rounded border border-purple-500/20 bg-[#0B0B0E] px-2 py-1 font-mono text-xs text-zinc-100 disabled:opacity-60"
-        >
-          {fns.length === 0 && <option value="">auto (chosen by the server)</option>}
-          {fns.map((f) => {
-            const sig = signatureOf(f);
-            const unsupported = unsupportedTypes(f).length > 0;
-            return (
-              <option key={sig} value={sig}>
-                {sig}
-                {defaultFn && sig === signatureOf(defaultFn) ? "  (default)" : ""}
-                {unsupported ? "  (unsupported args)" : ""}
-              </option>
-            );
-          })}
-        </select>
-      </label>
-      {selected && selected.inputTypes.length > 0 && unsupportedTypes(selected).length === 0 && (
-        <p className="-mt-1 text-xs text-zinc-500">
-          Placeholder args: {SUPPORTED_ARGS_TEXT}
-        </p>
-      )}
+    <section ref={sectionRef} className="block measure-block" aria-labelledby="measure-heading" aria-busy={loading}>
+      <div className="block-head">
+        <h2 id="measure-heading" ref={headingRef} tabIndex={-1} className="block-title">
+          Measured
+        </h2>
+        <span className="block-hint">Traced transactions in one local Anvil block</span>
+      </div>
 
-      </div></details>
+      <button
+        type="button"
+        onClick={() => measure()}
+        disabled={loading}
+        aria-busy={loading}
+        className="btn btn-primary btn-block btn-lg"
+      >
+        {loading ? (
+          <>
+            <span className="spinner" aria-hidden="true" />
+            Measuring…
+          </>
+        ) : (
+          "Measure parallelism"
+        )}
+      </button>
+
+      <details className="disclosure">
+        <summary>Advanced</summary>
+        <div className="disclosure-content">
+          <label className="field">
+            <span className="field-label">Function</span>
+            <select
+              value={selected ? signatureOf(selected) : ""}
+              onChange={(e) => setChosenSig(e.target.value)}
+              disabled={fns.length === 0 || loading}
+              className="select mono"
+            >
+              {fns.length === 0 && <option value="">auto (chosen by the server)</option>}
+              {fns.map((f) => {
+                const sig = signatureOf(f);
+                const unsupported = unsupportedTypes(f).length > 0;
+                return (
+                  <option key={sig} value={sig}>
+                    {sig}
+                    {defaultFn && sig === signatureOf(defaultFn) ? "  (default)" : ""}
+                    {unsupported ? "  (unsupported args)" : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          {selected && selected.inputTypes.length > 0 && unsupportedTypes(selected).length === 0 && (
+            <p className="muted small">Placeholder args: {SUPPORTED_ARGS_TEXT}</p>
+          )}
+          <p className="muted small">
+            Sends {TX_COUNT} calls from {TX_COUNT} distinct accounts into one block, traces each one, and builds the
+            dependency graph.
+          </p>
+        </div>
+      </details>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {loading ? "Measuring…" : ""}
+      </p>
+
+      {!loading && !result && !requestError && <p className="muted small">Not measured yet.</p>}
 
       {requestError && (
-        <div className="rounded border border-red-500/30 p-3 text-sm text-red-400">{requestError}</div>
+        <div role="alert" className="notice notice-error">
+          <div className="notice-title">Measurement failed</div>
+          <p>{requestError}</p>
+        </div>
       )}
 
       {state && !state.measured && (
-        <div className="rounded border border-zinc-600/40 p-3 text-sm">
-          <div className="font-medium text-zinc-300">Not measured</div>
-          <p className="mt-1 text-sm text-zinc-400">Measurement runs locally or via Docker (<a href="https://github.com/Nghtphl/MonadLens#docker-ile-çalıştırma" className="underline">see README</a>).</p><details className="disclosure mt-2"><summary>Details</summary><pre className="whitespace-pre-wrap break-words text-xs text-zinc-400">{state.reason}</pre></details>
+        <div className="notice notice-neutral" role="status">
+          <div className="notice-title">Not measured</div>
+          <p>
+            Measurement runs locally or via Docker (
+            <a href="https://github.com/Nghtphl/MonadLens#docker-ile-çalıştırma" className="text-link">
+              see README
+            </a>
+            ).
+          </p>
+          <details className="disclosure">
+            <summary>Details</summary>
+            <pre className="notice-pre">{state.reason}</pre>
+          </details>
         </div>
       )}
 
       {state && state.measured && (
-        <div className={`flex flex-col gap-3 ${stale ? "opacity-50" : ""}`}>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-            <span className="rounded bg-emerald-500/15 px-2 py-0.5 font-medium text-emerald-400">Measured</span>
-            <span className="font-mono">
+        <div className={stale ? "measured is-stale" : "measured"}>
+          <div className="measured-head">
+            <span className="tag tag-measured">Measured</span>
+            <span className="mono muted small measured-target">
               {result?.contractName}.{result?.calledFunction}
             </span>
-            {stale && <span className="text-yellow-400">Code or function changed since this measurement</span>}
           </div>
+          {stale && (
+            <p className="note note-warn" role="status">
+              Code or function changed since this measurement
+            </p>
+          )}
 
           {before && !stale && <BeforeAfter before={before} after={state} />}
 
           {state.revertedTxCount > 0 && (
-            <div className="rounded border border-orange-500/30 p-2 text-xs text-orange-300">
-              {state.revertedTxCount} of {state.txCount} txs reverted. Reverted txs made no writes, so contention
-              may be understated.
-            </div>
+            <p className="note note-warn">
+              {state.revertedTxCount} of {state.txCount} transactions reverted. Reverted transactions made no writes, so
+              contention may be understated.
+            </p>
           )}
 
-          <div className="grid grid-cols-3 gap-2">
-            <Metric label="Critical path" value={String(state.criticalPathLength)} testId="critical-path" />
-            <Metric label="Re-executions" value={String(state.reExecutionCount)} />
-            <Metric label="Parallelism" value={`${state.idealParallelism.toFixed(1)}×`} />
-          </div>
-          <p className="text-xs text-emerald-300">Measured · {state.txCount} txs <span className="text-zinc-400">· Parallelism is an upper bound</span></p>
-          <details className="disclosure"><summary>Details</summary><div className="disclosure-content">
-          <div className="text-xs text-zinc-500">
-            Avg gas used {state.avgGasUsed.toLocaleString()} · recommended gas limit{" "}
-            {state.recommendedGasLimit.toLocaleString()} (Monad bills the limit)
-          </div>
-
-          {hotRows.caught.length > 0 && (
-            <div className="text-xs">
-              <div className="mb-1 uppercase tracking-wide text-zinc-500">Hot slots · predicted by static rules</div>
-              <ul className="flex flex-col gap-0.5 font-mono">
-                {hotRows.caught.map((r) => (
-                  <HotSlotRow key={r.slot.slot} slot={r.slot} txCount={state.txCount} line={r.line} onRevealLine={onRevealLine} />
-                ))}
-              </ul>
-            </div>
+          {!(before && !stale) && (
+            <>
+              <div className="kpis">
+                <Metric label="Critical path" value={String(state.criticalPathLength)} hint="longest dependent chain" testId="critical-path" />
+                <Metric label="Re-executions" value={String(state.reExecutionCount)} hint="txs with a conflict" />
+                <Metric label="Ideal parallelism" value={`${state.idealParallelism.toFixed(1)}×`} hint="upper bound" />
+              </div>
+              <p className="measured-caption">Measured · {state.txCount} transactions</p>
+            </>
           )}
 
-          {shardRows.length > 0 && (
-            <div className="rounded border border-sky-500/30 p-2 text-xs">
-              <div className="mb-1 uppercase tracking-wide text-sky-300">Sharded</div>
-              <p className="mb-1 text-zinc-500">
-                Different txs write different elements of these arrays. Txs that land on the same shard still
-                conflict; that is the price of sharding, not a missed finding.
+          <details className="disclosure">
+            <summary>Details</summary>
+            <div className="disclosure-content">
+              <p className="muted small">
+                Avg gas used {state.avgGasUsed.toLocaleString("en-US")} · recommended gas limit{" "}
+                {state.recommendedGasLimit.toLocaleString("en-US")} (Monad bills the limit)
               </p>
-              <ul className="flex flex-col gap-0.5 font-mono">
-                {shardRows.map((r) => (
-                  <ShardGroupRow
-                    key={r.group.variable}
-                    group={r.group}
-                    txCount={state.txCount}
-                    line={r.line}
-                    onRevealLine={onRevealLine}
-                  />
-                ))}
-              </ul>
-            </div>
-          )}
 
-          {hotRows.missed.length > 0 && (
-            <div className="rounded border border-amber-500/30 p-2 text-xs">
-              <div className="mb-1 uppercase tracking-wide text-amber-300">Not caught by static rules</div>
-              <p className="mb-1 text-zinc-500">
-                Hot in the measured block, but no static finding names these variables: contention the rules did
-                not predict. Check whether a rule is missing.
-              </p>
-              <ul className="flex flex-col gap-0.5 font-mono">
-                {hotRows.missed.map((r) => (
-                  <HotSlotRow key={r.slot.slot} slot={r.slot} txCount={state.txCount} line={r.line} onRevealLine={onRevealLine} />
-                ))}
-              </ul>
-            </div>
-          )}
+              {hotRows.caught.length > 0 && (
+                <div className="detail-group">
+                  <div className="detail-label">Hot slots · predicted by static rules</div>
+                  <ul className="slot-list">
+                    {hotRows.caught.map((r) => (
+                      <HotSlotRow key={r.slot.slot} slot={r.slot} txCount={state.txCount} line={r.line} onRevealLine={onRevealLine} />
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-          {!stale && (
-            <BlockReplay
-              key={`${measuredKey}|${before ? "compare" : "single"}`}
-              lanes={
-                before
-                  ? [
-                      { title: "Before fix", result: before },
-                      { title: "After fix", result: state },
-                    ]
-                  : [{ title: `${result?.contractName}.${result?.calledFunction}`, result: state }]
-              }
-            />
-          )}
-          </div></details>
+              {shardRows.length > 0 && (
+                <div className="detail-group detail-sharded">
+                  <div className="detail-label">Sharded</div>
+                  <p className="muted small">
+                    Different transactions write different elements of these arrays. Transactions that land on the same
+                    shard still conflict; that is the price of sharding, not a missed finding.
+                  </p>
+                  <ul className="slot-list">
+                    {shardRows.map((r) => (
+                      <ShardGroupRow key={r.group.variable} group={r.group} txCount={state.txCount} line={r.line} onRevealLine={onRevealLine} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {hotRows.missed.length > 0 && (
+                <div className="detail-group detail-missed">
+                  <div className="detail-label">Not caught by static rules</div>
+                  <p className="muted small">
+                    Hot in the measured block, but no static finding names these variables: contention the rules did not
+                    predict. Check whether a rule is missing.
+                  </p>
+                  <ul className="slot-list">
+                    {hotRows.missed.map((r) => (
+                      <HotSlotRow key={r.slot.slot} slot={r.slot} txCount={state.txCount} line={r.line} onRevealLine={onRevealLine} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!stale && (
+                <BlockReplay
+                  key={`${measuredKey}|${before ? "compare" : "single"}`}
+                  lanes={
+                    before
+                      ? [
+                          { title: "Before fix", result: before },
+                          { title: "After fix", result: state },
+                        ]
+                      : [{ title: `${result?.contractName}.${result?.calledFunction}`, result: state }]
+                  }
+                />
+              )}
+            </div>
+          </details>
         </div>
       )}
     </section>
