@@ -1,0 +1,7 @@
+{
+  "findings": [
+    { "ruleId": "M1_BLOCK_TIME_ASSUMPTION", "line": 5 },
+    { "ruleId": "M1_BLOCK_TIME_ASSUMPTION", "line": 7 },
+    { "ruleId": "M1_BLOCK_TIME_ASSUMPTION", "line": 15 }
+  ]
+}

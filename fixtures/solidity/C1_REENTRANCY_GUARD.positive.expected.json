@@ -1,0 +1,6 @@
+{
+  "findings": [
+    { "ruleId": "C1_REENTRANCY_GUARD", "line": 12 },
+    { "ruleId": "C1_REENTRANCY_GUARD", "line": 20 }
+  ]
+}

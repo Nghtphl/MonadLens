@@ -1,0 +1,15 @@
+services:
+  monadlens:
+    image: monadlens:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      ANVIL_PATH: /usr/local/bin/anvil
+      SLITHER_PATH: /opt/slither/bin/slither
+      NEXT_TELEMETRY_DISABLED: "1"
+    init: true
+    restart: unless-stopped

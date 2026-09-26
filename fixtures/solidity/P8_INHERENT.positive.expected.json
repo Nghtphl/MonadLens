@@ -1,0 +1,6 @@
+{
+  "findings": [
+    { "ruleId": "P8_INHERENT", "line": 15 },
+    { "ruleId": "P8_INHERENT", "line": 16 }
+  ]
+}

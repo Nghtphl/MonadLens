@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {
+      "ruleId": "P2_ARRAY_PUSH",
+      "line": 8
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+{
+  "findings": [{ "ruleId": "P3_GLOBAL_ACCUMULATOR", "line": 9 }]
+}

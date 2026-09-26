@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {
+      "ruleId": "P1_GLOBAL_COUNTER",
+      "line": 8
+    }
+  ]
+}

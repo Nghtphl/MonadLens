@@ -1,0 +1,6 @@
+.agents
+.claude
+scripts
+.DS_Store
+/fixtures/realworld/UniswapV2Pair.sol
+/fixtures/realworld/WETH9.sol

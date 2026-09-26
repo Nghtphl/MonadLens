@@ -1,0 +1,337 @@
+{
+  "generatedAt": "2026-09-26",
+  "measured": true,
+  "contracts": [
+    {
+      "group": "real",
+      "file": "OpenZeppelinERC20.sol",
+      "sourceUrl": "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/token/ERC20/ERC20.sol",
+      "ref": "tag v5.0.2 (commit dbb6104ce834628e473d2173bbc9d47f81a9eec3)",
+      "license": "MIT",
+      "crashed": false,
+      "parseError": null,
+      "score": 60,
+      "findings": [
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 512,
+          "variable": "_totalSupply",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in _update, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 527,
+          "variable": "_totalSupply",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in _update, so every caller reads and writes the same slot."
+        }
+      ],
+      "measurement": {
+        "measured": true,
+        "target": "ERC20Harness.mint()",
+        "txCount": 100,
+        "revertedTxCount": 0,
+        "reExecutionCount": 99,
+        "criticalPathLength": 100,
+        "idealParallelism": 1,
+        "avgGasUsed": 50781,
+        "recommendedGasLimit": 74481,
+        "hotSlots": [
+          {
+            "label": "_totalSupply",
+            "writers": 100,
+            "readers": 100,
+            "predicted": true
+          }
+        ],
+        "shardGroups": []
+      },
+      "measurementNote": "Abstract base: measured with a public mint() harness appended (_mint(msg.sender, 1000))."
+    },
+    {
+      "group": "real",
+      "file": "OpenZeppelinERC721.sol",
+      "sourceUrl": "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.2/contracts/token/ERC721/ERC721.sol",
+      "ref": "tag v5.0.2 (commit dbb6104ce834628e473d2173bbc9d47f81a9eec3)",
+      "license": "MIT",
+      "crashed": false,
+      "parseError": null,
+      "score": 100,
+      "findings": [],
+      "measurement": {
+        "measured": true,
+        "target": "ERC721Harness.mint()",
+        "txCount": 100,
+        "revertedTxCount": 0,
+        "reExecutionCount": 0,
+        "criticalPathLength": 1,
+        "idealParallelism": 100,
+        "avgGasUsed": 68047,
+        "recommendedGasLimit": 74852,
+        "hotSlots": [],
+        "shardGroups": []
+      },
+      "measurementNote": "Abstract base: measured with a public mint() harness appended (_mint(msg.sender, uint160(msg.sender)))."
+    },
+    {
+      "group": "real",
+      "file": "StakingRewards.sol",
+      "sourceUrl": "https://github.com/Uniswap/liquidity-staker/blob/3edce550aeeb7b0c17a10701ff4484d6967e345f/contracts/StakingRewards.sol",
+      "ref": "commit 3edce550aeeb7b0c17a10701ff4484d6967e345f (master); dependency openzeppelin-solidity v2.3.0 (commit 132e442c1f5c857d2929fc2d5c5f08a3274a1910)",
+      "license": "No license declared in Uniswap/liquidity-staker; it is Uniswap's fork of Synthetix StakingRewards (MIT). OpenZeppelin 2.3.0 parts: MIT.",
+      "crashed": false,
+      "parseError": null,
+      "score": 20,
+      "findings": [
+        {
+          "ruleId": "C1_REENTRANCY_GUARD",
+          "severity": "info",
+          "line": 256,
+          "variable": "_guardCounter",
+          "weight": 1,
+          "message": "\"_guardCounter\" is written by the reentrancy guard `nonReentrant` on every call to stakeWithPermit, stake, withdraw, getReward. Consider OpenZeppelin's ReentrancyGuardTransient, which keeps the lock in transient storage (EIP-1153) instead of a storage slot. MonadLens does not count this as contention; measure the function to see whether the slot shows up as hot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 581,
+          "variable": "_totalSupply",
+          "functionName": "stakeWithPermit",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in stakeWithPermit, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 593,
+          "variable": "_totalSupply",
+          "functionName": "stake",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in stake, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 601,
+          "variable": "_totalSupply",
+          "functionName": "withdraw",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in withdraw, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 647,
+          "variable": "rewardPerTokenStored",
+          "weight": 1,
+          "message": "\"rewardPerTokenStored\" is overwritten in stakeWithPermit, stake, withdraw, getReward, notifyRewardAmount (via modifier `updateReward`) with rewardPerToken(), which reads it, so every caller reads and writes the same slot."
+        }
+      ],
+      "measurement": {
+        "measured": false,
+        "target": "stake",
+        "reason": "Compilation failed: ParserError: Source file requires different compiler version (current compiler is 0.8.37+commit.f401782d.Emscripten.clang)"
+      }
+    },
+    {
+      "group": "real",
+      "file": "UniswapV2Pair.sol",
+      "sourceUrl": "https://github.com/Uniswap/v2-core/blob/6a9e7c97860676e0992f22a49665760444c1cdf5/contracts/UniswapV2Pair.sol",
+      "ref": "commit 6a9e7c97860676e0992f22a49665760444c1cdf5 (master)",
+      "license": "GPL-3.0 (https://github.com/Uniswap/v2-core/blob/${UNISWAP_COMMIT}/LICENSE). Downloaded by scripts/fetch-realworld.ts; not kept in the repository.",
+      "crashed": false,
+      "parseError": null,
+      "score": 80,
+      "findings": [
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 142,
+          "variable": "totalSupply",
+          "functionName": "_mint",
+          "weight": 1,
+          "message": "\"totalSupply\" accumulates a per-call amount in _mint, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P8_INHERENT",
+          "severity": "info",
+          "line": 149,
+          "variable": "totalSupply",
+          "functionName": "_burn",
+          "weight": 1,
+          "message": "\"totalSupply\" is written in _burn, and _burn is only called from burn (via _update), which also writes \"reserve0\" and \"reserve1\". Those calls already serialize on the reserves, so this adds no contention of its own; no fix is offered."
+        },
+        {
+          "ruleId": "C1_REENTRANCY_GUARD",
+          "severity": "info",
+          "line": 309,
+          "variable": "unlocked",
+          "weight": 1,
+          "message": "\"unlocked\" is written by the reentrancy guard `lock` on every call to mint, burn, swap, skim, sync. Consider OpenZeppelin's ReentrancyGuardTransient, which keeps the lock in transient storage (EIP-1153) instead of a storage slot. MonadLens does not count this as contention; measure the function to see whether the slot shows up as hot."
+        },
+        {
+          "ruleId": "P8_INHERENT",
+          "severity": "info",
+          "line": 355,
+          "variable": "price0CumulativeLast",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"price0CumulativeLast\" is written in _update, and _update also writes \"reserve0\" and \"reserve1\". Those calls already serialize on the reserves, so this adds no contention of its own; no fix is offered."
+        },
+        {
+          "ruleId": "P8_INHERENT",
+          "severity": "info",
+          "line": 356,
+          "variable": "price1CumulativeLast",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"price1CumulativeLast\" is written in _update, and _update also writes \"reserve0\" and \"reserve1\". Those calls already serialize on the reserves, so this adds no contention of its own; no fix is offered."
+        },
+        {
+          "ruleId": "P8_INHERENT",
+          "severity": "info",
+          "line": 358,
+          "variable": "reserve0",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"reserve0\" is updated by every _update on this pool. This contention is inherent: sharding it would break the pool's pricing invariant, so no fix is offered."
+        },
+        {
+          "ruleId": "P8_INHERENT",
+          "severity": "info",
+          "line": 359,
+          "variable": "reserve1",
+          "functionName": "_update",
+          "weight": 1,
+          "message": "\"reserve1\" is updated by every _update on this pool. This contention is inherent: sharding it would break the pool's pricing invariant, so no fix is offered."
+        }
+      ],
+      "measurement": {
+        "measured": false,
+        "target": "sync",
+        "reason": "Compilation failed: ParserError: Source file requires different compiler version (current compiler is 0.8.37+commit.f401782d.Emscripten.clang)"
+      }
+    },
+    {
+      "group": "real",
+      "file": "WETH9.sol",
+      "sourceUrl": "https://github.com/gnosis/canonical-weth/blob/0dd1ea3e295eef916d0c6223ec63141137d22d67/contracts/WETH9.sol",
+      "ref": "commit 0dd1ea3e295eef916d0c6223ec63141137d22d67 (master)",
+      "license": "GPL-3.0 (see the notice below). Downloaded by scripts/fetch-realworld.ts; not kept in the repository.",
+      "crashed": false,
+      "parseError": null,
+      "score": 100,
+      "findings": [],
+      "measurement": {
+        "measured": false,
+        "target": "deposit",
+        "reason": "Compilation failed: ParserError: Source file requires different compiler version (current compiler is 0.8.37+commit.f401782d.Emscripten.clang)"
+      }
+    },
+    {
+      "group": "synthetic",
+      "file": "SimpleERC20.sol",
+      "crashed": false,
+      "parseError": null,
+      "score": 100,
+      "findings": []
+    },
+    {
+      "group": "synthetic",
+      "file": "SimpleERC721.sol",
+      "crashed": false,
+      "parseError": null,
+      "score": 100,
+      "findings": []
+    },
+    {
+      "group": "synthetic",
+      "file": "SimpleStaking.sol",
+      "crashed": false,
+      "parseError": null,
+      "score": 60,
+      "findings": [
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 21,
+          "variable": "totalStaked",
+          "functionName": "stake",
+          "weight": 1,
+          "message": "\"totalStaked\" accumulates a per-call amount in stake, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 30,
+          "variable": "totalStaked",
+          "functionName": "withdraw",
+          "weight": 1,
+          "message": "\"totalStaked\" accumulates a per-call amount in withdraw, so every caller reads and writes the same slot."
+        }
+      ]
+    },
+    {
+      "group": "port",
+      "file": "StakingRewardsCore.sol",
+      "sourceUrl": "https://github.com/Uniswap/liquidity-staker/blob/3edce550aeeb7b0c17a10701ff4484d6967e345f/contracts/StakingRewards.sol",
+      "ref": "derived from fixtures/realworld/StakingRewards.sol (Uniswap's fork of Synthetix StakingRewards)",
+      "license": "MIT (Synthetix StakingRewards; notice below)",
+      "crashed": false,
+      "parseError": null,
+      "score": 60,
+      "findings": [
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 56,
+          "variable": "rewardPerTokenStored",
+          "functionName": "stake",
+          "weight": 1,
+          "message": "\"rewardPerTokenStored\" is overwritten in stake (via modifier `updateReward`) with rewardPerToken(), which reads it, so every caller reads and writes the same slot."
+        },
+        {
+          "ruleId": "P3_GLOBAL_ACCUMULATOR",
+          "severity": "high",
+          "line": 65,
+          "variable": "_totalSupply",
+          "functionName": "stake",
+          "weight": 1,
+          "message": "\"_totalSupply\" accumulates a per-call amount in stake, so every caller reads and writes the same slot."
+        }
+      ],
+      "measurement": {
+        "measured": true,
+        "target": "StakingRewardsCore.stake(uint256)",
+        "txCount": 100,
+        "revertedTxCount": 0,
+        "reExecutionCount": 99,
+        "criticalPathLength": 100,
+        "idealParallelism": 1,
+        "avgGasUsed": 64966,
+        "recommendedGasLimit": 89187,
+        "hotSlots": [
+          {
+            "label": "_totalSupply",
+            "writers": 100,
+            "readers": 100,
+            "predicted": true
+          },
+          {
+            "label": "lastUpdateTime",
+            "writers": 1,
+            "readers": 100,
+            "predicted": false
+          }
+        ],
+        "shardGroups": []
+      },
+      "measurementNote": "solc 0.8 port of StakingRewards' reward bookkeeping (updateReward), without token transfers, so it can be measured."
+    }
+  ]
+}
